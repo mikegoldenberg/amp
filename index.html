@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winamp 2 • Video Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&amp;display=swap');
+        
+        body { background: #1a1a2e; font-family: system-ui, -apple-system, sans-serif; }
+        
+        .winamp-window {
+            background: #C0C0C0;
+            border: 2px solid #fff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            box-shadow: 2px 2px 0 #000;
+        }
+        
+        .winamp-titlebar {
+            background: linear-gradient(#000080, #0000A0);
+            color: white;
+            font-size: 11px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            user-select: none;
+        }
+        
+        .winamp-btn {
+            background: #C0C0C0;
+            border: 1px solid #fff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            font-size: 10px;
+            padding: 1px 5px;
+            cursor: pointer;
+            box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #fff;
+        }
+        
+        .winamp-btn:active {
+            border-color: #808080;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+            box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+        }
+        
+        .lcd { background: #000; color: #0f0; font-family: 'VT323', monospace; text-shadow: 0 0 5px #0f0; }
+        
+        .playlist-list { background: #fff; border: 1px solid #808080; font-size: 12px; height: 240px; overflow-y: auto; }
+        
+        .playlist-item {
+            padding: 3px 8px; border-bottom: 1px solid #C0C0C0; cursor: grab; display: flex; align-items: center; gap: 6px; user-select: none;
+        }
+        .playlist-item:active { cursor: grabbing; }
+        .playlist-item.active { background: #000080; color: white; }
+        
+        .winamp-time { font-size: 34px; line-height: 1; letter-spacing: 2px; }
+        
+        .spectrum-bar { width: 5px; background: linear-gradient(#0f0, #080); transition: height 70ms linear; box-shadow: 0 0 4px #0f0; }
+        
+        .visualizer-container { background: #000; border: 1px solid #404040; }
+        
+        .skin-classic { --winamp-bg: #C0C0C0; }
+        .skin-green  { --winamp-bg: #2E8B57; }
+        .skin-dark   { --winamp-bg: #2D2D2D; color: #ddd; }
+        
+        .marquee-container { overflow: hidden; }
+        .marquee-text { display: inline-block; white-space: nowrap; animation: marquee 9s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        
+        .winamp-desktop { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        
+        @media (max-width: 900px) {
+            .winamp-desktop { flex-direction: column; align-items: center; }
+            .winamp-main, .playlist-window, .video-window { max-width: 100% !important; width: 100%; }
+        }
+        
+        .video-window {
+            width: 340px;
+            background: #C0C0C0;
+            border: 2px solid #fff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            box-shadow: 2px 2px 0 #000;
+        }
+        
+        .video-container {
+            background: #000;
+            border: 2px solid #404040;
+            margin: 6px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-[1100px] mx-auto">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-3">
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-[#000080] flex items-center justify-center rounded"><span class="text-white text-2xl font-bold">W</span></div>
+                <div>
+                    <h1 class="text-3xl font-bold text-white tracking-tight">Winamp 2</h1>
+                    <p class="text-emerald-400 text-xs -mt-1">Video Edition • 240p • 2026</p>
+                </div>
+            </div>
+            
+            <!-- Skin Switcher -->
+            <div class="flex items-center gap-1 bg-zinc-900 p-1 rounded">
+                <span class="text-xs text-zinc-400 px-2">Скин:</span>
+                <button onclick="switchSkin('classic')" class="winamp-btn text-xs px-2 py-0.5">Classic</button>
+                <button onclick="switchSkin('green')" class="winamp-btn text-xs px-2 py-0.5">Green</button>
+                <button onclick="switchSkin('dark')" class="winamp-btn text-xs px-2 py-0.5">Dark</button>
+            </div>
+        </div>
+
+        <div class="winamp-desktop">
+            
+            <!-- MAIN WINAMP -->
+            <div id="main-window" class="winamp-window winamp-main w-full max-w-[275px] rounded-sm overflow-hidden skin-classic">
+                <div class="winamp-titlebar px-1.5">
+                    <div class="flex-1 flex items-center gap-x-2">
+                        <span class="font-bold">Winamp</span>
+                        <span class="text-[9px] opacity-75">2.95</span>
+                    </div>
+                    <div class="flex gap-px">
+                        <div onclick="minimizeWindow()" class="winamp-btn px-1.5 text-[9px]">_</div>
+                        <div onclick="closeWindow()" class="winamp-btn px-1.5 text-[9px]">×</div>
+                    </div>
+                </div>
+                
+                <div class="p-2">
+                    <!-- Display -->
+                    <div class="flex gap-2">
+                        <div class="lcd px-3 py-1 rounded flex flex-col items-center w-[94px] border border-[#404040]">
+                            <div id="winamp-time" class="winamp-time tabular-nums">00:00</div>
+                            <div class="text-[8px] text-[#00AA00] -mt-0.5">TIME</div>
+                        </div>
+                        <div class="flex-1 bg-black border border-[#404040] rounded p-1.5 text-[#00FF00] text-xs min-w-0">
+                            <div class="text-[8px] text-[#00AA00]">NOW PLAYING</div>
+                            <div class="marquee-container h-4 overflow-hidden">
+                                <span id="winamp-title-text" class="marquee-text text-sm font-bold">Загрузите трек...</span>
+                            </div>
+                            <div id="winamp-artist" class="text-[9px] text-[#00AA00] mt-0.5">YOUTUBE • 240p</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visualizer -->
+                    <div class="mt-2 visualizer-container p-1.5 rounded">
+                        <div class="flex justify-between items-center mb-1 px-1">
+                            <div class="text-[#00AA00] text-[8px]">VISUALIZER</div>
+                            <div class="flex gap-1 text-[8px]">
+                                <button onclick="setVisualizer('spectrum')" id="vis-spectrum"
+                                        class="winamp-btn px-1.5 py-0 text-[8px] active">SPECTRUM</button>
+                                <button onclick="setVisualizer('oscilloscope')" id="vis-osc"
+                                        class="winamp-btn px-1.5 py-0 text-[8px]">OSC</button>
+                            </div>
+                        </div>
+                        
+                        <div id="vis-spectrum-container">
+                            <div class="flex items-end justify-between h-9 gap-px" id="spectrum"></div>
+                        </div>
+                        
+                        <div id="vis-osc-container" class="hidden">
+                            <canvas id="oscilloscope" width="240" height="38" class="w-full"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Seek -->
+                    <div class="mt-2 px-1 flex items-center gap-2">
+                        <div class="text-[9px] w-6">POS</div>
+                        <input type="range" id="winamp-seek" class="flex-1 accent-[#000080]" min="0" max="100" step="0.1" value="0">
+                        <div id="winamp-duration" class="lcd text-[10px] px-1.5 py-px w-[46px] text-center tabular-nums">00:00</div>
+                    </div>
+                    
+                    <!-- Controls -->
+                    <div class="mt-3 flex items-center justify-between px-1">
+                        <div class="flex gap-1">
+                            <button onclick="prevTrack()" class="winamp-btn w-8 h-8 text-lg">⏮</button>
+                            <button id="winamp-play-btn" onclick="togglePlayWinamp()" class="winamp-btn w-9 h-8 text-lg">▶</button>
+                            <button onclick="pauseWinamp()" class="winamp-btn w-8 h-8 text-lg">⏸</button>
+                            <button onclick="stopWinamp()" class="winamp-btn w-8 h-8 text-lg">■</button>
+                            <button onclick="nextTrack()" class="winamp-btn w-8 h-8 text-lg">⏭</button>
+                        </div>
+                        
+                        <div class="flex gap-3 items-center">
+                            <div class="flex items-center gap-1">
+                                <span class="text-[9px]">VOL</span>
+                                <input type="range" id="winamp-volume" class="w-14 accent-[#000080]" min="0" max="100" value="80">
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-[9px]">BAL</span>
+                                <input type="range" id="winamp-balance" class="w-10 accent-[#000080]" min="-100" max="100" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2 flex justify-between text-[9px] px-1 text-black">
+                        <div><span id="winamp-bitrate">240p</span> • <span id="winamp-khz">44.1</span> kHz</div>
+                        <div class="flex gap-1">
+                            <div onclick="toggleShuffle()" id="shuffle-btn" class="winamp-btn px-1.5 text-[8px] cursor-pointer">SHUF</div>
+                            <div onclick="toggleRepeat()" id="repeat-btn" class="winamp-btn px-1.5 text-[8px] cursor-pointer">REPEAT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PLAYLIST -->
+            <div class="playlist-window w-full max-w-[360px] rounded-sm overflow-hidden flex flex-col">
+                <div class="winamp-titlebar px-2">
+                    <span class="font-bold flex-1">Playlist</span>
+                    <span id="playlist-count" class="text-[9px] bg-white/30 px-1.5 rounded">0</span>
+                </div>
+                
+                <div class="p-2 flex-1 flex flex-col bg-[#C0C0C0]">
+                    <div class="flex gap-1 mb-2">
+                        <input id="winamp-url-input" type="text" placeholder="YouTube ссылка..." 
+                               class="flex-1 text-xs border border-[#808080] px-2 py-1 bg-white text-black">
+                        <button onclick="addTrackFromInput()" class="winamp-btn px-3 text-xs">Add</button>
+                    </div>
+                    
+                    <div id="playlist-list" class="playlist-list flex-1 text-sm"></div>
+                    
+                    <div class="mt-1.5 flex justify-between text-[9px] px-1">
+                        <div class="flex gap-1">
+                            <button onclick="playSelected()" class="winamp-btn px-2 py-px text-[9px]">Play</button>
+                            <button onclick="removeSelected()" class="winamp-btn px-2 py-px text-[9px]">Del</button>
+                        </div>
+                        <button onclick="clearPlaylist()" class="winamp-btn px-2 py-px text-[9px]">Clear</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VIDEO WINDOW (NEW) -->
+            <div class="video-window w-full max-w-[340px] rounded-sm overflow-hidden">
+                <div class="winamp-titlebar px-2">
+                    <span class="font-bold flex-1">Video</span>
+                    <span class="text-[9px] bg-white/30 px-1.5 rounded">240p</span>
+                    <div class="flex gap-px ml-1">
+                        <div onclick="minimizeVideo()" class="winamp-btn px-1 text-[9px]">_</div>
+                        <div onclick="toggleVideoWindow()" class="winamp-btn px-1 text-[9px]">×</div>
+                    </div>
+                </div>
+                
+                <div class="p-1.5 bg-[#C0C0C0]">
+                    <!-- Visible YouTube Player Container -->
+                    <div id="video-player-container" 
+                         class="video-container w-full rounded overflow-hidden"
+                         style="width: 320px; height: 240px; max-width: 100%;">
+                        <div id="youtube-player" style="width: 100%; height: 100%;"></div>
+                    </div>
+                    
+                    <div class="mt-1.5 text-center">
+                        <div class="text-[9px] text-black">Принудительно 240p • Качество фиксировано</div>
+                        <button onclick="force240p()" class="winamp-btn text-[9px] px-3 py-0.5 mt-1">Force 240p</button>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="text-center mt-4 text-xs text-zinc-500">
+            Winamp 2 • Три окна • Видео всегда в 240p • Spectrum + Oscilloscope • Drag &amp; Drop • 3 скина
+        </div>
+    </div>
+    
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        // === STATE ===
+        let player = null;
+        let playlist = [];
+        let currentIndex = -1;
+        let isPlaying = false;
+        let updateInterval = null;
+        let spectrumInterval = null;
+        let oscInterval = null;
+        let currentVisualizer = 'spectrum';
+        let shuffleEnabled = false;
+        let repeatEnabled = false;
+        let selectedIndex = -1;
+        let draggedIndex = null;
+        
+        // === VISUALIZERS (Spectrum + Oscilloscope only) ===
+        function createSpectrumBars() {
+            const container = document.getElementById('spectrum');
+            container.innerHTML = '';
+            for (let i = 0; i < 18; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'spectrum-bar rounded-sm';
+                bar.style.height = '4px';
+                container.appendChild(bar);
+            }
+        }
+        
+        function startSpectrum() {
+            stopAllVisualizers();
+            const bars = document.querySelectorAll('#spectrum .spectrum-bar');
+            spectrumInterval = setInterval(() => {
+                if (!isPlaying) {
+                    bars.forEach(b => b.style.height = '4px');
+                    return;
+                }
+                bars.forEach(bar => {
+                    const height = Math.random() * 28 + 5;
+                    bar.style.height = `${Math.max(4, Math.min(36, height))}px`;
+                });
+            }, 85);
+        }
+        
+        let oscCanvas, oscCtx;
+        function initOscilloscope() {
+            oscCanvas = document.getElementById('oscilloscope');
+            if (oscCanvas) oscCtx = oscCanvas.getContext('2d');
+        }
+        
+        function startOscilloscope() {
+            stopAllVisualizers();
+            const canvas = document.getElementById('oscilloscope');
+            const ctx = canvas.getContext('2d');
+            
+            oscInterval = setInterval(() => {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (!isPlaying) {
+                    ctx.strokeStyle = '#003300';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvas.height/2);
+                    ctx.lineTo(canvas.width, canvas.height/2);
+                    ctx.stroke();
+                    return;
+                }
+                
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 1.5;
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = '#00FF00';
+                
+                ctx.beginPath();
+                const amplitude = 14;
+                const frequency = 2.8;
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = canvas.height/2 + Math.sin((x / 12) * frequency + Date.now()/180) * amplitude * (0.6 + Math.random()*0.4);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }, 70);
+        }
+        
+        function stopAllVisualizers() {
+            if (spectrumInterval) { clearInterval(spectrumInterval); spectrumInterval = null; }
+            if (oscInterval) { clearInterval(oscInterval); oscInterval = null; }
+            
+            document.querySelectorAll('#spectrum .spectrum-bar').forEach(b => b.style.height = '4px');
+            
+            const canvas = document.getElementById('oscilloscope');
+            if (canvas && canvas.getContext) {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function setVisualizer(mode) {
+            document.getElementById('vis-spectrum-container').classList.add('hidden');
+            document.getElementById('vis-osc-container').classList.add('hidden');
+            
+            ['vis-spectrum','vis-osc'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+                document.getElementById(id).style.background = '';
+            });
+            
+            currentVisualizer = mode;
+            
+            if (mode === 'spectrum') {
+                document.getElementById('vis-spectrum-container').classList.remove('hidden');
+                document.getElementById('vis-spectrum').classList.add('active');
+                if (isPlaying) startSpectrum();
+            } else if (mode === 'oscilloscope') {
+                document.getElementById('vis-osc-container').classList.remove('hidden');
+                document.getElementById('vis-osc').classList.add('active');
+                if (isPlaying) startOscilloscope();
+            }
+        }
+        
+        // === SKINS ===
+        function switchSkin(skin) {
+            const main = document.getElementById('main-window');
+            main.classList.remove('skin-classic', 'skin-green', 'skin-dark');
+            if (skin === 'classic') main.classList.add('skin-classic');
+            else if (skin === 'green') main.classList.add('skin-green');
+            else if (skin === 'dark') main.classList.add('skin-dark');
+        }
+        
+        // === DRAG & DROP ===
+        function enableDragAndDrop() {
+            const list = document.getElementById('playlist-list');
+            
+            list.addEventListener('dragover', e => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(list, e.clientY);
+                const dragging = document.querySelector('.dragging');
+                if (dragging) {
+                    if (afterElement == null) list.appendChild(dragging);
+                    else list.insertBefore(dragging, afterElement);
+                }
+            });
+        }
+        
+        function getDragAfterElement(container, y) {
+            const items = [...container.querySelectorAll('.playlist-item:not(.dragging)')];
+            return items.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset, element: child };
+                return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        
+        // === PLAYLIST ===
+        function renderPlaylist() {
+            const container = document.getElementById('playlist-list');
+            container.innerHTML = '';
+            
+            if (playlist.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'p-4 text-center text-[#666] text-xs';
+                empty.innerHTML = 'Плейлист пуст<br>Добавьте треки';
+                container.appendChild(empty);
+                document.getElementById('playlist-count').textContent = '0';
+                return;
+            }
+            
+            playlist.forEach((track, index) => {
+                const item = document.createElement('div');
+                item.className = `playlist-item text-xs ${index === currentIndex ? 'active' : ''}`;
+                item.draggable = true;
+                item.dataset.index = index;
+                
+                item.innerHTML = `
+                    <div class="flex-1 truncate">
+                        <span class="font-mono text-[10px] mr-1.5 opacity-60">${String(index+1).padStart(2,'0')}</span>
+                        ${track.title}
+                    </div>
+                    <div class="text-[10px] opacity-60 tabular-nums w-9 text-right">${track.duration || '—:—'}</div>
+                `;
+                
+                item.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                        selectedIndex = index;
+                        playTrack(index);
+                    }
+                });
+                
+                item.addEventListener('dragstart', () => {
+                    draggedIndex = index;
+                    item.classList.add('dragging');
+                });
+                
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                    const newOrder = [];
+                    container.querySelectorAll('.playlist-item').forEach(el => {
+                        const idx = parseInt(el.dataset.index);
+                        newOrder.push(playlist[idx]);
+                    });
+                    playlist = newOrder;
+                    if (currentIndex !== -1) {
+                        const newCurrent = playlist.findIndex(t => t.id === playlist[currentIndex]?.id);
+                        currentIndex = newCurrent;
+                    }
+                    renderPlaylist();
+                });
+                
+                container.appendChild(item);
+            });
+            
+            document.getElementById('playlist-count').textContent = playlist.length;
+        }
+        
+        async function addTrack(videoId, customTitle = null) {
+            let title = customTitle || 'Загрузка...';
+            let author = 'YouTube';
+            
+            if (!customTitle) {
+                try {
+                    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                    const data = await res.json();
+                    title = data.title.length > 48 ? data.title.substring(0, 45) + '...' : data.title;
+                    author = data.author_name;
+                } catch { title = 'Трек #' + (playlist.length + 1); }
+            }
+            
+            playlist.push({ id: videoId, title, author, duration: '—:—' });
+            renderPlaylist();
+            if (playlist.length === 1) playTrack(0);
+        }
+        
+        function addTrackFromInput() {
+            const input = document.getElementById('winamp-url-input');
+            const url = input.value.trim();
+            if (!url) return;
+            
+            let videoId = null;
+            let m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/) || url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) || url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
+            if (m) videoId = m[1];
+            
+            if (!videoId) { alert('Неверная ссылка YouTube'); return; }
+            addTrack(videoId);
+            input.value = '';
+        }
+        
+        function removeSelected() {
+            if (selectedIndex < 0) return;
+            const wasCurrent = selectedIndex === currentIndex;
+            playlist.splice(selectedIndex, 1);
+            if (wasCurrent) stopWinamp();
+            selectedIndex = -1;
+            renderPlaylist();
+        }
+        
+        function clearPlaylist() {
+            if (!confirm('Очистить плейлист?')) return;
+            stopWinamp();
+            playlist = [];
+            currentIndex = -1;
+            renderPlaylist();
+        }
+        
+        function playSelected() {
+            if (selectedIndex >= 0) playTrack(selectedIndex);
+        }
+        
+        // === YOUTUBE PLAYER (visible in Video window) ===
+        function createPlayer(videoId) {
+            if (player) {
+                try { player.destroy(); } catch(e) {}
+                player = null;
+            }
+            
+            // Create player inside the visible video container
+            player = new YT.Player('youtube-player', {
+                height: '240',
+                width: '320',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 1,           // Show minimal controls in video window
+                    'disablekb': 0,
+                    'fs': 1,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'vq': 'small'            // Try to force low quality
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
+        }
+        
+        function onPlayerReady(event) {
+            // Force 240p quality
+            try {
+                player.setPlaybackQuality('small');
+            } catch(e) {}
+            
+            const vol = parseInt(document.getElementById('winamp-volume').value);
+            if (player) player.setVolume(vol);
+            
+            updateTimeDisplay();
+        }
+        
+        function force240p() {
+            if (player) {
+                try {
+                    player.setPlaybackQuality('small');
+                    alert('Качество принудительно установлено в 240p (small)');
+                } catch(e) {
+                    alert('Не удалось изменить качество (возможно, видео не поддерживает 240p)');
+                }
+            } else {
+                alert('Сначала запустите воспроизведение');
+            }
+        }
+        
+        function onPlayerStateChange(event) {
+            const playBtn = document.getElementById('winamp-play-btn');
+            
+            if (event.data === YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                playBtn.innerHTML = '⏸';
+                startUpdating();
+                if (currentVisualizer === 'spectrum') startSpectrum();
+                else if (currentVisualizer === 'oscilloscope') startOscilloscope();
+            } 
+            else if (event.data === YT.PlayerState.PAUSED) {
+                isPlaying = false;
+                playBtn.innerHTML = '▶';
+                stopUpdating();
+                stopAllVisualizers();
+            } 
+            else if (event.data === YT.PlayerState.ENDED) {
+                isPlaying = false;
+                playBtn.innerHTML = '▶';
+                stopUpdating();
+                stopAllVisualizers();
+                
+                if (repeatEnabled) {
+                    playTrack(currentIndex);
+                } else if (shuffleEnabled) {
+                    playRandom();
+                } else if (currentIndex < playlist.length - 1) {
+                    playTrack(currentIndex + 1);
+                }
+            }
+        }
+        
+        function onPlayerError(event) {
+            console.error('Player error:', event.data);
+            document.getElementById('winamp-title-text').textContent = 'Ошибка загрузки видео';
+        }
+        
+        async function playTrack(index) {
+            if (index < 0 || index >= playlist.length) return;
+            
+            currentIndex = index;
+            selectedIndex = index;
+            renderPlaylist();
+            
+            const track = playlist[index];
+            document.getElementById('winamp-title-text').textContent = track.title;
+            document.getElementById('winamp-artist').textContent = track.author.toUpperCase();
+            document.getElementById('winamp-time').textContent = '00:00';
+            document.getElementById('winamp-seek').value = 0;
+            
+            createPlayer(track.id);
+            
+            setTimeout(() => {
+                if (player) player.playVideo();
+            }, 700);
+        }
+        
+        function togglePlayWinamp() {
+            if (!player) {
+                if (playlist.length > 0) playTrack(currentIndex >= 0 ? currentIndex : 0);
+                return;
+            }
+            try {
+                const state = player.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+                else player.playVideo();
+            } catch(e) {}
+        }
+        
+        function pauseWinamp() { if (player) try { player.pauseVideo(); } catch(e){} }
+        
+        function stopWinamp() {
+            if (player) {
+                try { player.pauseVideo(); player.seekTo(0, true); } catch(e){}
+            }
+            isPlaying = false;
+            document.getElementById('winamp-play-btn').innerHTML = '▶';
+            document.getElementById('winamp-time').textContent = '00:00';
+            document.getElementById('winamp-seek').value = 0;
+            stopUpdating();
+            stopAllVisualizers();
+        }
+        
+        function nextTrack() {
+            if (!playlist.length) return;
+            let next = currentIndex + 1;
+            if (next >= playlist.length) {
+                next = repeatEnabled ? 0 : (shuffleEnabled ? Math.floor(Math.random()*playlist.length) : currentIndex);
+            }
+            playTrack(next);
+        }
+        
+        function prevTrack() {
+            if (!playlist.length) return;
+            let prev = currentIndex - 1;
+            if (prev < 0) prev = repeatEnabled ? playlist.length - 1 : 0;
+            playTrack(prev);
+        }
+        
+        function playRandom() {
+            if (!playlist.length) return;
+            let r = Math.floor(Math.random() * playlist.length);
+            while (r === currentIndex && playlist.length > 1) r = Math.floor(Math.random() * playlist.length);
+            playTrack(r);
+        }
+        
+        function updateTimeDisplay() {
+            if (!player || typeof player.getCurrentTime !== 'function') return;
+            try {
+                const cur = player.getCurrentTime() || 0;
+                const dur = player.getDuration() || 0;
+                document.getElementById('winamp-time').textContent = formatTime(cur);
+                if (dur > 0) {
+                    document.getElementById('winamp-duration').textContent = formatTime(dur);
+                    const seek = document.getElementById('winamp-seek');
+                    if (document.activeElement !== seek) seek.value = (cur / dur) * 100;
+                }
+            } catch(e){}
+        }
+        
+        function formatTime(s) {
+            if (!s || isNaN(s)) return '00:00';
+            return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+        }
+        
+        function startUpdating() { stopUpdating(); updateInterval = setInterval(updateTimeDisplay, 400); }
+        function stopUpdating() { if (updateInterval) clearInterval(updateInterval); }
+        
+        function setupControls() {
+            const seek = document.getElementById('winamp-seek');
+            seek.oninput = () => {
+                if (!player) return;
+                try {
+                    const d = player.getDuration();
+                    if (d > 0) player.seekTo(seek.value / 100 * d, true);
+                } catch(e){}
+            };
+            
+            document.getElementById('winamp-volume').oninput = (e) => {
+                if (player) try { player.setVolume(parseInt(e.target.value)); } catch(e){}
+            };
+        }
+        
+        function toggleShuffle() {
+            shuffleEnabled = !shuffleEnabled;
+            const b = document.getElementById('shuffle-btn');
+            b.style.background = shuffleEnabled ? '#000080' : '';
+            b.style.color = shuffleEnabled ? 'white' : '';
+        }
+        
+        function toggleRepeat() {
+            repeatEnabled = !repeatEnabled;
+            const b = document.getElementById('repeat-btn');
+            b.style.background = repeatEnabled ? '#000080' : '';
+            b.style.color = repeatEnabled ? 'white' : '';
+        }
+        
+        function minimizeWindow() {
+            const w = document.getElementById('main-window');
+            w.style.transition = 'transform .2s';
+            w.style.transformOrigin = 'top';
+            w.style.transform = 'scaleY(0.02)';
+            setTimeout(() => { w.style.display = 'none'; setTimeout(() => { w.style.display = 'block'; w.style.transform = 'scaleY(1)'; }, 900); }, 220);
+        }
+        
+        function minimizeVideo() {
+            const w = document.querySelector('.video-window');
+            w.style.transition = 'transform .2s';
+            w.style.transformOrigin = 'top';
+            w.style.transform = 'scaleY(0.02)';
+            setTimeout(() => { w.style.display = 'none'; setTimeout(() => { w.style.display = 'block'; w.style.transform = 'scaleY(1)'; }, 900); }, 220);
+        }
+        
+        function toggleVideoWindow() {
+            const w = document.querySelector('.video-window');
+            if (w.style.display === 'none') {
+                w.style.display = 'block';
+            } else {
+                w.style.display = 'none';
+            }
+        }
+        
+        function closeWindow() {
+            if (confirm('Закрыть Winamp?')) location.reload();
+        }
+        
+        function setupKeyboard() {
+            document.addEventListener('keydown', e => {
+                if (e.target.tagName === 'INPUT') return;
+                if (e.key === ' ') { e.preventDefault(); togglePlayWinamp(); }
+                if (e.key === 'ArrowRight') nextTrack();
+                if (e.key === 'ArrowLeft') prevTrack();
+                if (e.key.toLowerCase() === 's') stopWinamp();
+            });
+        }
+        
+        function init() {
+            createSpectrumBars();
+            initOscilloscope();
+            setupControls();
+            enableDragAndDrop();
+            setupKeyboard();
+            
+            setVisualizer('spectrum');
+            
+            // Welcome message
+            document.getElementById('winamp-title-text').textContent = 'Winamp 2 • Video Edition';
+            document.getElementById('winamp-artist').textContent = '240p VIDEO WINDOW';
+            
+            console.log('%c[Winamp v3] Загружено: 3 окна, видео в 240p, Spectrum + Oscilloscope, drag&drop', 'color:#0f0');
+        }
+        
+        window.onload = init;
+        window.WINAMP = { add: (id, t) => addTrack(id, t), skin: switchSkin, clear: clearPlaylist, force240p: force240p };
+    </script>
+</body>
+</html>
