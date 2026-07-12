@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winamp 2 • Video Edition</title>
+    <title>Mikeamp 2 • Video Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -103,7 +103,7 @@
             <div class="flex items-center gap-x-3">
                 <div class="w-9 h-9 bg-[#000080] flex items-center justify-center rounded"><span class="text-white text-2xl font-bold">W</span></div>
                 <div>
-                    <h1 class="text-3xl font-bold text-white tracking-tight">Winamp 2</h1>
+                    <h1 class="text-3xl font-bold text-white tracking-tight">Mikeamp 2</h1>
                     <p class="text-emerald-400 text-xs -mt-1">Video Edition • 240p • 2026</p>
                 </div>
             </div>
@@ -123,7 +123,7 @@
             <div id="main-window" class="winamp-window winamp-main w-full max-w-[275px] rounded-sm overflow-hidden skin-classic">
                 <div class="winamp-titlebar px-1.5">
                     <div class="flex-1 flex items-center gap-x-2">
-                        <span class="font-bold">Winamp</span>
+                        <span class="font-bold">Mikeamp</span>
                         <span class="text-[9px] opacity-75">2.95</span>
                     </div>
                     <div class="flex gap-px">
@@ -262,9 +262,7 @@
             
         </div>
         
-        <div class="text-center mt-4 text-xs text-zinc-500">
-            Winamp 2 • Три окна • Видео всегда в 240p • Spectrum + Oscilloscope • Drag &amp; Drop • 3 скина
-        </div>
+        <!-- Footer removed as requested -->
     </div>
     
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -797,14 +795,14 @@
             setVisualizer('spectrum');
             
             // Welcome message
-            document.getElementById('winamp-title-text').textContent = 'Winamp 2 • Video Edition';
+            document.getElementById('winamp-title-text').textContent = 'Mikeamp 2 • Video Edition';
             document.getElementById('winamp-artist').textContent = '240p VIDEO WINDOW';
             
-            console.log('%c[Winamp v3] Загружено: 3 окна, видео в 240p, Spectrum + Oscilloscope, drag&drop', 'color:#0f0');
+            console.log('%c[Mikeamp v3] Загружено: 3 окна, видео в 240p, Spectrum + Oscilloscope, drag&drop', 'color:#0f0');
         }
         
         window.onload = init;
-        window.WINAMP = { add: (id, t) => addTrack(id, t), skin: switchSkin, clear: clearPlaylist, force240p: force240p };
+        window.MIKEAMP = { add: (id, t) => addTrack(id, t), skin: switchSkin, clear: clearPlaylist, force240p: force240p };
     </script>
 </body>
 </html>
